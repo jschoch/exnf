@@ -5,6 +5,15 @@ defmodule Exnf do
   require Lager
   def main(args) do
     start("?",[])
+    sleep?
+  end
+  def sleep? do
+    running_apps = :application.which_applications
+    res = Enum.any?(running_apps,fn({name,_,_}) -> name == :exnf end)
+    if (res) do
+      :timer.sleep(100)
+      sleep?
+    end
   end
   def start(_type,_args) do
     start_link([ping_interval: 5,strategy: :file,mode: :default])

@@ -19,7 +19,10 @@ defmodule Exnf do
     start("?",[])
   end
   def start(_type,_args) do
-    start_link([ping_interval: 5,strategy: :file,mode: :default])
+    start_link([poll_interval: 500,strategy: :file,mode: :default])
+  end
+  def master_name do
+    "exnf_master@#{:net_adm.localhost}"  |> binary_to_atom
   end
   def start_link(config) do
     #rand_name
@@ -35,7 +38,7 @@ defmodule Exnf do
       node_name -> 
         assign_name(node_name)
     end 
-    master_name = "exnf_master@#{:net_adm.localhost}"  |> binary_to_atom
+    #master_name = "exnf_master@#{:net_adm.localhost}"  |> binary_to_atom
     case :net_adm.ping(master_name) do
       :pang ->
         Lager.info "Exnf.start_link: no master, assigning this node"
@@ -56,10 +59,10 @@ defmodule Exnf do
     {:ok, config}
   end
   
-  def list do
-    :gen_server.call :exnf, :list
+  def get_nodes do
+    :gen_server.call :exnf, :get_nodes
   end 
-  def handle_call(:list,_from,{config,nodes}) do
+  def handle_call(:get_nodes,_from,{config,nodes}) do
     {:reply,nodes,{config,nodes}}
   end
   def shutdown(node_name) do
@@ -69,7 +72,7 @@ defmodule Exnf do
     :gen_server.call {:exnf, node_name}, :stop
   end
   def shutdown_all do
-    nodes = list
+    nodes = get_nodes
     Lager.debug "Shutting down nodes: #{inspect nodes}"
     Enum.map(nodes,fn(node) ->
       Lager.info "Attempting to shut down node: #{node}" 
@@ -81,10 +84,24 @@ defmodule Exnf do
     :timer.sleep(2000)
     :gen_server.call :exnf, :stop
   end
+  def loop_poll do
+    Lager.debug "starting polling"
+    config = get_config
+    nodes = get_nodes
+    results = Enum.map(nodes,ping(&1))
+    pi = config[:poll_interval]
+    Lager.debug "nodes #{nodes}\nconfig #{config}\npi #{pi}"
+    if (is_number(pi)) do
+      Lager.debug "Exnf.poll: sleeping for #{pi}"
+      :timer.sleep(pi)
+      loop_poll
+    else
+      Lager.info "Exnf.poll Exiting polling loop"
+    end
+  end
   def stop do
     :gen_server.call :exnf, :stop
   end
-
   def handle_call(:stop,_from,state) do
     Lager.info "Exnf shuttind down"
     {:stop, :normal, :shutdown_ok, state}
@@ -100,9 +117,25 @@ defmodule Exnf do
     {:reply,nodes,{config,nodes}}
   end
   def remove(node) do
-
+    new_nodes = Enum.filter(get_nodes,&1 == node)
+    :gen_server.call :exnf, {:update_nodes,new_nodes}
   end
-  def ping(nodes) do
+  def handle_call({:update_nodes,new_nodes},_from,{config,nodes}) do
+    {:reply,new_nodes,{config,new_nodes}}
+  end
+  def ping(node) do
+     case :net_adm.ping(node) do
+      :pang -> 
+        if (node != master_name) do
+          remove(node)  
+          :false
+        else
+          Lager.info "master node appears down"
+          :false
+        end
+      :pong -> :true#add(node)
+      doh -> Lager.error "something fucked up #{doh}"
+    end
 
   end 
   def get_config do

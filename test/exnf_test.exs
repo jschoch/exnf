@@ -3,7 +3,7 @@ Code.require_file "test_helper.exs", __DIR__
 defmodule ExnfTest do
   use ExUnit.Case
   setup do
-    config = [ping_interval: 5,strategy: :file,mode: :simple]
+    config = [poll_interval: 500,strategy: :file,mode: :simple]
     Exnf.start_link(config)
     :ok
   end
@@ -13,7 +13,7 @@ defmodule ExnfTest do
   end
   test "loads config" do
     Exnf.stop
-	  config = [ping_interval: 5,strategy: :file,mode: :ec2]
+	  config = [ping_interval: 500,strategy: :file,mode: :ec2]
     {result,pid} = Exnf.start_link(config)
     c2 = Exnf.get_config
     assert(c2[:mode] == config[:mode])

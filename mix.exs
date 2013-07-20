@@ -20,4 +20,7 @@ defmodule Exnf.Mixfile do
   defp deps do
     [{:exlager ,%r".*",[github: "khia/exlager"]}]
   end
+  defp options(env) when env in [:dev, :test] do
+    [exlager_level: :debug, exlager_truncation_size: 8096]
+  end
 end

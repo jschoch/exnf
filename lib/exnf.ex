@@ -3,12 +3,14 @@ defmodule Exnf do
   #use Appication.Behavior
   use Application.Behaviour
   require Lager
+  def main(args) do
+    start("?",[])
+  end
   def start(_type,_args) do
     start_link([ping_interval: 5,strategy: :file,mode: :default])
   end
   def start_link(config) do
     #rand_name
-    nodes = [node, [created_at: "now"]]
     case config[:strategy] do
       :file -> Lager.debug "using :file strategy"
       :cidr -> Lager.debug "using :cidr strategy"
@@ -32,6 +34,7 @@ defmodule Exnf do
       doh ->
         Lager.error "Exnf.start_link: something terrible happened"
     end
+    nodes = Node.list
     :gen_server.start_link({:local,:exnf},__MODULE__,{config,nodes},[])
   end
   def init({config,nodes}) do
@@ -43,9 +46,25 @@ defmodule Exnf do
   def list do
     :gen_server.call :exnf, :stop
   end 
+  def shutdown(node_name) do
+    Lager.debug "shutting down #{node_name}" 
+    stop_fn = fn -> Exnf.stop end
+    Node.spawn(node_name, stop_fn)
+  end
+  def shutdown_all do
+    :gen_server.call :exnf,:shutdown_all
+    :gen_server.call :exnf, :stop
+  end
+  def handle_call(:shutdown_all,_from,{config,nodes}) do
+    Lager.debug "Shutting down nodes: #{inspect nodes}"
+    Enum.map(nodes,shutdown(&1))
+    #Enum.map(ListDict.keys(nodes),shutdown(&1)) 
+    {:reply,nodes,{config,nodes}}
+  end
   def stop do
     :gen_server.call :exnf, :stop
   end
+
   def handle_call(:stop,_from,state) do
     Lager.info "Exnf shuttind down"
     {:stop, :normal, :shutdown_ok, state}
@@ -83,7 +102,6 @@ defmodule Exnf do
     rand_name
   end
   def rand_name do
-    #:application(lager: :stop)Lager.stop
     :application.stop(:lager)
     :net_kernel.stop
     :random.seed(:erlang.now)
@@ -97,7 +115,6 @@ defmodule Exnf do
         Lager.error "Exnf.rand_name: unable to set node name\n#{doh}"
     end
     :application.start(:lager)
-    #Lager.start
     Lager.debug "Node name set to: #{node}"  
   end
 end

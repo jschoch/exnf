@@ -27,13 +27,13 @@ defmodule Exnf do
   def start_link(config) do
     #rand_name
     case config[:strategy] do
-      :file -> Lager.debug "using :file strategy"
-      :cidr -> Lager.debug "using :cidr strategy"
+      :file -> Lager.info "using :file strategy"
+      :cidr -> Lager.info "using :cidr strategy"
       _ -> Lager.error "Exnf.start_link: no strategy"
     end 
     case config[:node_name] do
       nil -> 
-        Lager.debug "no node name in config, creating random name"
+        Lager.info "no node name in config, creating random name"
         assign_name 
       node_name -> 
         assign_name(node_name)
@@ -45,13 +45,13 @@ defmodule Exnf do
         config = ListDict.put(config,:node_name, master_name)
         assign_name(master_name)
       :pong ->
-        Lager.debug "master node found on host!"
+        Lager.info "master node found on host!"
       doh ->
         Lager.error "Exnf.start_link: something terrible happened"
     end
     nodes = Node.list
     connect_results = Enum.map(nodes,Node.connect(&1))
-    Lager.debug "connect results: #{inspect connect_results}"
+    Lager.info "connect results: #{inspect connect_results}"
     :gen_server.start_link({:local,:exnf},__MODULE__,{config,nodes},[])
   end
   def init(config) do
@@ -66,33 +66,32 @@ defmodule Exnf do
     {:reply,nodes,{config,nodes}}
   end
   def shutdown(node_name) do
-    #Lager.debug "shutting down #{node_name}" 
+    #Lager.info "shutting down #{node_name}" 
     stop_fn = fn -> Exnf.stop end
     #Node.spawn(node_name, stop_fn)
     :gen_server.call {:exnf, node_name}, :stop
   end
   def shutdown_all do
     nodes = get_nodes
-    Lager.debug "Shutting down nodes: #{inspect nodes}"
+    Lager.info "Shutting down nodes: #{inspect nodes}"
     Enum.map(nodes,fn(node) ->
       Lager.info "Attempting to shut down node: #{node}" 
       res = shutdown(node)
       Lager.info "result from shutdown was #{res}"
       end
       )
-    Lager.debug "Shutdown: sleeping"
+    Lager.info "Shutdown: sleeping"
     :timer.sleep(2000)
     :gen_server.call :exnf, :stop
   end
   def loop_poll do
-    Lager.debug "starting polling"
     config = get_config
-    nodes = get_nodes
+    nodes = Enum.uniq(get_nodes ++ Node.list)
     results = Enum.map(nodes,ping(&1))
     pi = config[:poll_interval]
-    Lager.debug "nodes #{nodes}\nconfig #{config}\npi #{pi}"
+    #Lager.info "nodes #{inspect nodes}\nconfig #{inspect config}\npi #{inspect pi}\nresults #{inspect results}"
     if (is_number(pi)) do
-      Lager.debug "Exnf.poll: sleeping for #{pi}"
+      #Lager.info "Exnf.poll: sleeping for #{pi}"
       :timer.sleep(pi)
       loop_poll
     else
@@ -114,10 +113,11 @@ defmodule Exnf do
   end
   def handle_call({:add,node},_from,{config,nodes}) do
     nodes = [node | nodes]
+    Lager.info "Exnf.add #{inspect nodes}"
     {:reply,nodes,{config,nodes}}
   end
   def remove(node) do
-    new_nodes = Enum.filter(get_nodes,&1 == node)
+    new_nodes = Enum.filter(get_nodes,&1 != node)
     :gen_server.call :exnf, {:update_nodes,new_nodes}
   end
   def handle_call({:update_nodes,new_nodes},_from,{config,nodes}) do
@@ -127,13 +127,17 @@ defmodule Exnf do
      case :net_adm.ping(node) do
       :pang -> 
         if (node != master_name) do
+          Lager.info "Exnf.ping: removing node #{inspect node}" 
           remove(node)  
           :false
         else
           Lager.info "master node appears down"
           :false
         end
-      :pong -> :true#add(node)
+      :pong -> unless node in get_nodes do
+          Lager.info "Exnf.ping: adding node #{inspect node}"
+          add(node)
+        end
       doh -> Lager.error "something fucked up #{doh}"
     end
 
@@ -152,7 +156,7 @@ defmodule Exnf do
     :net_kernel.stop
     res = :net_kernel.start([name, :longnames])
     :application.start(:exlager)
-    Lager.debug("res was: #{inspect res}")
+    Lager.info("res was: #{inspect res}")
   end
   def assign_name(name) do
     Lager.error "Name must be an atom"
@@ -166,12 +170,12 @@ defmodule Exnf do
     case :net_kernel.start([node_name, :longnames]) do
       {:ok,_} -> 
         :application.start(:exlager)
-        Lager.debug "set node name to #{node_name} #{node}"
+        Lager.info "set node name to #{node_name} #{node}"
       doh -> 
         :application.start(:exlager)
         Lager.error "Exnf.rand_name: unable to set node name\n#{doh}"
     end
     :application.start(:exlager)
-    Lager.debug "Node name set to: #{node}"  
+    Lager.info "Node name set to: #{node}"  
   end
 end

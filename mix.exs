@@ -10,7 +10,9 @@ defmodule Exnf.Mixfile do
 
   # Configuration for the OTP application
   def application do
-    [applications: [:lager]]
+    [applications: [:lager],
+    registered: [:exnf],
+  mod: {Exnf, [:start_link]}]
   end
 
   # Returns the list of dependencies in the format:

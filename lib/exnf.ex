@@ -148,10 +148,10 @@ defmodule Exnf do
     rand_name
   end
   def assign_name(name) when is_atom(name) do
-    :application.stop(:lager)
+    :application.stop(:exlager)
     :net_kernel.stop
     res = :net_kernel.start([name, :longnames])
-    :application.start(:lager)
+    :application.start(:exlager)
     Lager.debug("res was: #{inspect res}")
   end
   def assign_name(name) do
@@ -159,19 +159,19 @@ defmodule Exnf do
     rand_name
   end
   def rand_name do
-    :application.stop(:lager)
+    :application.stop(:exlager)
     :net_kernel.stop
     :random.seed(:erlang.now)
     node_name = "n#{:random.uniform(100000)}" |> binary_to_atom
     case :net_kernel.start([node_name, :longnames]) do
       {:ok,_} -> 
-        :application.start(:lager)
+        :application.start(:exlager)
         Lager.debug "set node name to #{node_name} #{node}"
       doh -> 
-        :application.start(:lager)
+        :application.start(:exlager)
         Lager.error "Exnf.rand_name: unable to set node name\n#{doh}"
     end
-    :application.start(:lager)
+    :application.start(:exlager)
     Lager.debug "Node name set to: #{node}"  
   end
 end

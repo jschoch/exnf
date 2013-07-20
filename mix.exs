@@ -10,7 +10,7 @@ defmodule Exnf.Mixfile do
 
   # Configuration for the OTP application
   def application do
-    [applications: [:lager],
+    [applications: [:exlager],
     registered: [:exnf],
   mod: {Exnf, [:start_link]}]
   end
@@ -21,6 +21,7 @@ defmodule Exnf.Mixfile do
     [{:exlager ,%r".*",[github: "khia/exlager"]}]
   end
   defp options(env) when env in [:dev, :test] do
+    IO.puts "DEBUG!!!!!!!!!!!!!!!!"
     [exlager_level: :debug, exlager_truncation_size: 8096]
   end
 end

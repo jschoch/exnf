@@ -15,6 +15,9 @@ defmodule Exnf do
       sleep?
     end
   end
+  def start do
+    start("?",[])
+  end
   def start(_type,_args) do
     start_link([ping_interval: 5,strategy: :file,mode: :default])
   end
@@ -44,31 +47,39 @@ defmodule Exnf do
         Lager.error "Exnf.start_link: something terrible happened"
     end
     nodes = Node.list
+    connect_results = Enum.map(nodes,Node.connect(&1))
+    Lager.debug "connect results: #{inspect connect_results}"
     :gen_server.start_link({:local,:exnf},__MODULE__,{config,nodes},[])
   end
-  def init({config,nodes}) do
+  def init(config) do
     Lager.info "Exnf starting up with config: #{inspect config}"
-    state = {config,nodes}
-    {:ok, state}
+    {:ok, config}
   end
   
   def list do
-    :gen_server.call :exnf, :stop
+    :gen_server.call :exnf, :list
   end 
+  def handle_call(:list,_from,{config,nodes}) do
+    {:reply,nodes,{config,nodes}}
+  end
   def shutdown(node_name) do
-    Lager.debug "shutting down #{node_name}" 
+    #Lager.debug "shutting down #{node_name}" 
     stop_fn = fn -> Exnf.stop end
-    Node.spawn(node_name, stop_fn)
+    #Node.spawn(node_name, stop_fn)
+    :gen_server.call {:exnf, node_name}, :stop
   end
   def shutdown_all do
-    :gen_server.call :exnf,:shutdown_all
-    :gen_server.call :exnf, :stop
-  end
-  def handle_call(:shutdown_all,_from,{config,nodes}) do
+    nodes = list
     Lager.debug "Shutting down nodes: #{inspect nodes}"
-    Enum.map(nodes,shutdown(&1))
-    #Enum.map(ListDict.keys(nodes),shutdown(&1)) 
-    {:reply,nodes,{config,nodes}}
+    Enum.map(nodes,fn(node) ->
+      Lager.info "Attempting to shut down node: #{node}" 
+      res = shutdown(node)
+      Lager.info "result from shutdown was #{res}"
+      end
+      )
+    Lager.debug "Shutdown: sleeping"
+    :timer.sleep(2000)
+    :gen_server.call :exnf, :stop
   end
   def stop do
     :gen_server.call :exnf, :stop
@@ -82,7 +93,11 @@ defmodule Exnf do
     
   end
   def add(node) do
-
+    :gen_server.call :exnf, {:add,node}
+  end
+  def handle_call({:add,node},_from,{config,nodes}) do
+    nodes = [node | nodes]
+    {:reply,nodes,{config,nodes}}
   end
   def remove(node) do
 

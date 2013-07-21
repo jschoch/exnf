@@ -223,12 +223,12 @@ defmodule Exnf do
     case :net_kernel.start([node_name, :longnames]) do
       {:ok,_} -> 
         :application.start(:exlager)
-        Lager.info "set node name to #{node_name} #{node}"
+        Lager.info "set node name to #{inspect node_name} #{inspect node}"
       doh -> 
         :application.start(:exlager)
-        Lager.error "Exnf.rand_name: unable to set node name\n#{doh}"
+        Lager.error "Exnf.rand_name: unable to set node name\n#{inspect doh}"
     end
     :application.start(:exlager)
-    Lager.info "Node name set to: #{node}"  
+    Lager.info "Node name set to: #{inspect node}"  
   end
 end

@@ -20,7 +20,6 @@ defmodule Exnf.Mixfile do
   defp deps do
     [{:exlager ,">= 0.0",[github: "khia/exlager"]},
     {:jsonex,"2.0",[github: "marcelog/jsonex", tag: "2.0"]}]
-    [{:exlager ,">= 0.0",[github: "khia/exlager"]}]
   end
   defp options(env) when env in [:dev, :test] do
     IO.puts "DEBUG!!!!!!!!!!!!!!!!"

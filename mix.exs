@@ -18,8 +18,12 @@ defmodule Exnf.Mixfile do
   # Returns the list of dependencies in the format:
   # { :foobar, "0.1", git: "https://github.com/elixir-lang/foobar.git" }
   defp deps do
+<<<<<<< HEAD
     [{:exlager ,">= 0.0",[github: "khia/exlager"]},
     {:jsonex,"2.0",[github: "marcelog/jsonex", tag: "2.0"]}]
+=======
+    [{:exlager ,">= 0.0",[github: "khia/exlager"]}]
+>>>>>>> ec0c673936b2597ef1353aae0515ca675dce240f
   end
   defp options(env) when env in [:dev, :test] do
     IO.puts "DEBUG!!!!!!!!!!!!!!!!"

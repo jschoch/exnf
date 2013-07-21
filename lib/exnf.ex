@@ -24,13 +24,22 @@ defmodule Exnf do
   def master_name do
     "exnf_master@#{:net_adm.localhost}"  |> binary_to_atom
   end
-  def start_link(config) do
-    #rand_name
+  def find_nodes do
+    config = get_config
     case config[:strategy] do
       :file -> Lager.info "using :file strategy"
+        import Exnf.Strategy.File
+        do_find_nodes
+        #use Exnf.Strategy.File
+        #alias Exnf.Stategy.File.nodes
       :cidr -> Lager.info "using :cidr strategy"
+        import Exnf.Strategy.Cidr
+        do_find_nodes
       _ -> Lager.error "Exnf.start_link: no strategy"
     end 
+
+  end
+  def start_link(config) do
     case config[:node_name] do
       nil -> 
         Lager.info "no node name in config, creating random name"
@@ -122,6 +131,12 @@ defmodule Exnf do
   end
   def handle_call({:update_nodes,new_nodes},_from,{config,nodes}) do
     {:reply,new_nodes,{config,new_nodes}}
+  end
+  def update_config(new_config) do
+    :gen_server.call :exnf, {:update_config,new_config}
+  end
+  def handle_call({:update_config,new_config},_from,{config,nodes}) do
+    {:reply,new_config,{new_config,nodes}}
   end
   def ping(node) do
      case :net_adm.ping(node) do

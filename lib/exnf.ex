@@ -61,7 +61,10 @@ defmodule Exnf do
     nodes = Node.list
     connect_results = Enum.map(nodes,Node.connect(&1))
     Lager.info "connect results: #{inspect connect_results}"
-    :gen_server.start_link({:local,:exnf},__MODULE__,{config,nodes},[])
+    ret = :gen_server.start_link({:local,:exnf},__MODULE__,{config,nodes},[])
+    :timer.sleep(1000)
+    sp
+    ret
   end
   def init(config) do
     Lager.info "Exnf starting up with config: #{inspect config}"
